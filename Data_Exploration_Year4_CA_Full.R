@@ -600,3 +600,15 @@ barplot(duration_free_variance * 100,
 # tests the input choice. Neither fit estimates subscription probabilities.
 
 
+
+# STEP 10: SAVE THE PREPARED DATA
+
+# Save the complete prepared and encoded table separately from bank-full.csv.
+# All 45,211 rows and the 17 original columns remain in this 30-column table.
+# The 36,954 NA values in pdays_since_contact mean no prior contact occurred.
+dim(bank_encoded)                               # Confirm the final dimensions
+colSums(is.na(bank_encoded))                     # Locate the structural missing values
+write.csv(bank_encoded, "bank_prepared_encoded_v25.csv", row.names = FALSE)
+# row.names = FALSE avoids adding an artificial row-number column to the CSV.
+
+
