@@ -511,4 +511,60 @@ count(bank_encoded, default, default_flag)
 
 
 
+# STEP 8: SELECT NUMERICAL FEATURES AND RUN PCA
+
+# Exclude y, category labels, calendar day and the pdays=-1 sentinel.
+# Duration is for retrospective structure, not pre-call prediction.
+pca_inputs <- bank_clean[, c("age", "balance", "duration", "campaign", "previous")]
+# Inspect correlations before interpreting how much compression PCA achieves.
+round(cor(pca_inputs), 2)
+# Small pairwise correlations help explain the shallow scree plot below.
+# They do not rule out nonlinear relationships between these variables.
+pca_prepared <- pca_inputs
+pca_prepared$age <- scale(pca_prepared$age)
+pca_prepared$balance <- scale(pca_prepared$balance)
+pca_prepared$duration <- scale(pca_prepared$duration)
+pca_prepared$campaign <- scale(pca_prepared$campaign)
+pca_prepared$previous <- scale(pca_prepared$previous)
+summary(pca_prepared)
+# Standardisation changes units, not skewness or sensitivity to extremes.
+hist(bank_clean$balance, breaks = 60, col = "blue", border = "black",
+     xlab = "Average yearly balance (EUR)", ylab = "Counts",
+     main = "Balance before standardisation")
+hist(pca_prepared$balance, breaks = 60, col = "blue", border = "black",
+     xlab = "Standardised balance", ylab = "Counts",
+     main = "Balance after standardisation")
+
+# Fit PCA on the five selected numerical inputs
+# prcomp centres and scales the raw columns once because years, euros,
+# seconds and contact counts have different units. pca_prepared above is
+# a separate diagnostic copy; it is not standardised again for this fit.
+bank_pca <- prcomp(pca_inputs, center = TRUE, scale. = TRUE)
+summary(bank_pca)
+bank_pca$rotation
+# Convert component variances to percentages, then label every component.
+bank_pca_variance <- bank_pca$sdev^2 / sum(bank_pca$sdev^2)
+barplot(bank_pca_variance * 100,
+        names.arg = c("PC1", "PC2", "PC3", "PC4", "PC5"),
+        main = "Scree plot of bank campaign PCA", col = "steelblue",
+        xlab = "Principal component", ylab = "Explained variance (%)")
+
+# Keep the first four scores for an exploratory 80% variance target.
+# The summary reaches 82.07% with four, while the first two capture 43.86%.
+# The shallow scree plot and small drop between components imply limited reduction.
+bank_pca_reduced <- bank_pca$x[, 1:4, drop = FALSE]
+summary(bank_pca_reduced)
+
+# Compare input and score dimensions, using the classroom PCA example.
+# Variance shares are calculated from the squared component standard deviations.
+dim(pca_inputs)
+dim(bank_pca_reduced)
+round(bank_pca_variance * 100, 2)                 # Percentage explained by each component
+round(cumsum(bank_pca_variance) * 100, 2)         # Percentage explained by the first k components
+round(sum(bank_pca_variance[1:4]) * 100, 2)
+
+# Read the largest coefficients and their relative signs within each component.
+# PC1 contrasts current campaign contacts with balance, age and call duration.
+# Prior contact count contributes most strongly to PC3. Component signs can flip.
+
 
