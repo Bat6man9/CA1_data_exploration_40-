@@ -568,3 +568,35 @@ round(sum(bank_pca_variance[1:4]) * 100, 2)
 # Prior contact count contributes most strongly to PC3. Component signs can flip.
 
 
+
+
+# STEP 9: CHECK HOW PCA CHANGES UNDER TWO INPUT CHOICES
+
+# Check whether one extreme previous-contact count drives these results.
+# Fit a separate PCA with fresh centring and scaling. Keep the record in the
+# main analysis because the source does not establish that it is an error.
+pca_without_maximum <- pca_inputs[pca_inputs$previous != max(pca_inputs$previous), ]
+bank_pca_without_maximum <- prcomp(pca_without_maximum, center = TRUE, scale. = TRUE)
+summary(bank_pca_without_maximum)
+bank_pca_without_maximum$rotation
+# Four components still explain 82.10%. This checks one observation.
+
+# Does the limited reduction depend on including completed-call duration?
+# Use the same records and the same centring and scaling as the main fit.
+pca_without_duration <- bank_clean[, c("age", "balance", "campaign", "previous")]
+bank_pca_without_duration <- prcomp(pca_without_duration, center = TRUE, scale. = TRUE)
+summary(bank_pca_without_duration)
+bank_pca_without_duration$rotation
+duration_free_variance <- bank_pca_without_duration$sdev^2 /
+  sum(bank_pca_without_duration$sdev^2)
+round(cumsum(duration_free_variance) * 100, 2)
+barplot(duration_free_variance * 100,
+        names.arg = c("PC1", "PC2", "PC3", "PC4"),
+        main = "Scree plot without call duration", col = "steelblue",
+        xlab = "Principal component", ylab = "Explained variance (%)")
+# Three scores explain 77.50%, so reaching 80% requires all four.
+# Age and balance have the strongest PC1 coefficients and share a sign.
+# The variance percentages refer to this four-variable set. Removing duration
+# tests the input choice. Neither fit estimates subscription probabilities.
+
+
