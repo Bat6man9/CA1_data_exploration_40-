@@ -300,3 +300,191 @@ previous_minmax_without_max[without_max_previous$previous == 1][1]
 # Removing a row changes the fitted data; that is a different sensitivity question.
 
 
+
+# STEP 6: INVESTIGATE CAMPAIGN AND EDUCATION PATTERNS
+
+# Examine the contact-information pattern within its two dominant months.
+# This describes recorded months, not years or a causal adjustment.
+may_known <- known_contact[known_contact$month == "may", ]
+may_unknown <- unknown_contact[unknown_contact$month == "may", ]
+june_known <- known_contact[known_contact$month == "jun", ]
+june_unknown <- unknown_contact[unknown_contact$month == "jun", ]
+table(may_known$y)
+table(may_unknown$y)
+table(june_known$y)
+table(june_unknown$y)
+rate_may_known <- 100 * sum(may_known$y == "yes") / nrow(may_known)
+rate_may_unknown <- 100 * sum(may_unknown$y == "yes") / nrow(may_unknown)
+rate_june_known <- 100 * sum(june_known$y == "yes") / nrow(june_known)
+rate_june_unknown <- 100 * sum(june_unknown$y == "yes") / nrow(june_unknown)
+rate_may_known
+rate_may_unknown
+rate_june_known
+rate_june_unknown
+
+month_contact <- bank_clean[bank_clean$month == "may" | bank_clean$month == "jun", ]
+month_contact$contact_group <- ifelse(month_contact$month == "may",
+                                      ifelse(month_contact$contact == "unknown", "May\nunknown", "May\nknown"),
+                                      ifelse(month_contact$contact == "unknown", "June\nunknown", "June\nknown"))
+month_rates <- count(month_contact, contact_group)
+month_rates$subscription_percent <- 0
+month_rates[month_rates$contact_group == "May\nknown", "subscription_percent"] <- rate_may_known
+month_rates[month_rates$contact_group == "May\nunknown", "subscription_percent"] <- rate_may_unknown
+month_rates[month_rates$contact_group == "June\nknown", "subscription_percent"] <- rate_june_known
+month_rates[month_rates$contact_group == "June\nunknown", "subscription_percent"] <- rate_june_unknown
+month_rates
+month_rate_plot <- ggplot(month_rates, aes(x = contact_group, y = subscription_percent)) +
+  geom_point(size = 3, colour = "steelblue") +
+  coord_cartesian(ylim = c(0, 50)) +
+  labs(title = "Contact information within May and June",
+       x = "Recorded month and contact information", y = "Subscription (%)") +
+  theme_minimal()
+print(month_rate_plot)
+# Stratifying by month alone cannot establish why information is missing or
+# whether contact method causes a subscription. Do not infer a particular year.
+
+# Inspect the full ranges of the numerical inputs together
+# Equal panels compare distribution shapes, not units or variance magnitudes.
+# Keep the long tails visible before considering PCA sensitivity.
+par(mfrow = c(2, 2))
+hist(bank_clean$age, breaks = 30, col = "blue", border = "black",
+     xlab = "Age (years)", ylab = "Counts", main = "Age: full range")
+hist(bank_clean$duration, breaks = 60, col = "blue", border = "black",
+     xlab = "Call duration (seconds)", ylab = "Counts",
+     main = "Duration: full range")
+hist(bank_clean$campaign, breaks = 60, col = "blue", border = "black",
+     xlab = "Current campaign contacts", ylab = "Counts",
+     main = "Campaign: full range")
+hist(bank_clean$previous, breaks = 60, col = "blue", border = "black",
+     xlab = "Prior campaign contacts", ylab = "Counts",
+     main = "Previous: full range")
+par(mfrow = c(1, 1))
+summary(bank_clean[, c("age", "balance", "duration", "campaign", "previous")])
+sum(bank_clean$duration == 0)
+sum(bank_clean$campaign == 1)
+sum(bank_clean$previous == 0)
+# Zero duration does not establish an invalid record. Investigate before deletion.
+# Duration is retrospective. More contacts cannot be interpreted as causing a
+# different outcome from these observational distributions.
+
+# Question 4: how does subscription vary across recorded education categories?
+# Keep unknown separate. Rates use the full denominator in each category.
+education_primary <- bank_clean[bank_clean$education == "primary", ]
+education_secondary <- bank_clean[bank_clean$education == "secondary", ]
+education_tertiary <- bank_clean[bank_clean$education == "tertiary", ]
+education_unknown <- bank_clean[bank_clean$education == "unknown", ]
+count(bank_clean, education, y)
+rate_primary <- 100 * sum(education_primary$y == "yes") / nrow(education_primary)
+rate_secondary <- 100 * sum(education_secondary$y == "yes") / nrow(education_secondary)
+rate_tertiary <- 100 * sum(education_tertiary$y == "yes") / nrow(education_tertiary)
+rate_education_unknown <- 100 * sum(education_unknown$y == "yes") / nrow(education_unknown)
+education_summary <- count(bank_clean, education)
+education_summary$subscription_percent <- 0
+education_summary[education_summary$education == "primary", "subscription_percent"] <- rate_primary
+education_summary[education_summary$education == "secondary", "subscription_percent"] <- rate_secondary
+education_summary[education_summary$education == "tertiary", "subscription_percent"] <- rate_tertiary
+education_summary[education_summary$education == "unknown", "subscription_percent"] <- rate_education_unknown
+education_summary
+education_rate_plot <- ggplot(education_summary,
+                              aes(x = education, y = subscription_percent)) +
+  geom_point(size = 3, colour = "steelblue") +
+  coord_cartesian(ylim = c(0, 20)) +
+  labs(title = "Subscription by recorded education",
+       x = "Recorded education category", y = "Subscription (%)") +
+  theme_minimal()
+print(education_rate_plot)
+# These are record-level associations, not the effect of education.
+# Unknown is missing information, not an intermediate education qualification.
+
+# Check the primary-tertiary comparison without any prior campaign contact
+# This subset removes prior-success records but does not control other differences.
+primary_no_prior <- education_primary[education_primary$pdays == -1, ]
+tertiary_no_prior <- education_tertiary[education_tertiary$pdays == -1, ]
+table(primary_no_prior$y)
+table(tertiary_no_prior$y)
+rate_primary_no_prior <- 100 * sum(primary_no_prior$y == "yes") / nrow(primary_no_prior)
+rate_tertiary_no_prior <- 100 * sum(tertiary_no_prior$y == "yes") / nrow(tertiary_no_prior)
+rate_tertiary - rate_primary
+rate_tertiary_no_prior - rate_primary_no_prior
+# The contrast can persist within a broad stratum while still being confounded.
+# Secondary remains only the coding reference; it is not a statistical control.
+
+# Does the education contrast persist within age bands when there is no prior contact?
+# Compare only the two education groups in the earlier contrast. Use broad bands
+# to keep group sizes readable, and retain the other records in bank_clean.
+age_comparison <- bank_clean[bank_clean$pdays == -1 &
+                               (bank_clean$education == "primary" |
+                                  bank_clean$education == "tertiary"), ]
+age_comparison$age_band <- ifelse(age_comparison$age < 30, "18-29",
+                                  ifelse(age_comparison$age < 45, "30-44",
+                                         ifelse(age_comparison$age < 60, "45-59", "60+")))
+# Count all records in each age and education group first.
+# Keep a separate subscription count so the numerator and denominator are visible.
+age_rates <- count(age_comparison, age_band, education)
+age_rates$subscribed <- 0
+
+primary_18_29 <- age_comparison[age_comparison$age_band == "18-29" &
+                                  age_comparison$education == "primary", ]
+age_rates[age_rates$age_band == "18-29" & age_rates$education == "primary",
+          "subscribed"] <- sum(primary_18_29$y == "yes")
+
+primary_30_44 <- age_comparison[age_comparison$age_band == "30-44" &
+                                  age_comparison$education == "primary", ]
+age_rates[age_rates$age_band == "30-44" & age_rates$education == "primary",
+          "subscribed"] <- sum(primary_30_44$y == "yes")
+
+primary_45_59 <- age_comparison[age_comparison$age_band == "45-59" &
+                                  age_comparison$education == "primary", ]
+age_rates[age_rates$age_band == "45-59" & age_rates$education == "primary",
+          "subscribed"] <- sum(primary_45_59$y == "yes")
+
+primary_60_plus <- age_comparison[age_comparison$age_band == "60+" &
+                                    age_comparison$education == "primary", ]
+age_rates[age_rates$age_band == "60+" & age_rates$education == "primary",
+          "subscribed"] <- sum(primary_60_plus$y == "yes")
+
+tertiary_18_29 <- age_comparison[age_comparison$age_band == "18-29" &
+                                   age_comparison$education == "tertiary", ]
+age_rates[age_rates$age_band == "18-29" & age_rates$education == "tertiary",
+          "subscribed"] <- sum(tertiary_18_29$y == "yes")
+
+tertiary_30_44 <- age_comparison[age_comparison$age_band == "30-44" &
+                                   age_comparison$education == "tertiary", ]
+age_rates[age_rates$age_band == "30-44" & age_rates$education == "tertiary",
+          "subscribed"] <- sum(tertiary_30_44$y == "yes")
+
+tertiary_45_59 <- age_comparison[age_comparison$age_band == "45-59" &
+                                   age_comparison$education == "tertiary", ]
+age_rates[age_rates$age_band == "45-59" & age_rates$education == "tertiary",
+          "subscribed"] <- sum(tertiary_45_59$y == "yes")
+
+tertiary_60_plus <- age_comparison[age_comparison$age_band == "60+" &
+                                     age_comparison$education == "tertiary", ]
+age_rates[age_rates$age_band == "60+" & age_rates$education == "tertiary",
+          "subscribed"] <- sum(tertiary_60_plus$y == "yes")
+
+age_rates$subscription_percent <- 100 * age_rates$subscribed / age_rates$n
+age_rates
+
+primary_age_rates <- age_rates$subscription_percent[age_rates$education == "primary"]
+tertiary_age_rates <- age_rates$subscription_percent[age_rates$education == "tertiary"]
+primary_band <- age_rates$age_band[age_rates$education == "primary"]
+tertiary_band <- age_rates$age_band[age_rates$education == "tertiary"]
+names(primary_age_rates) <- primary_band
+names(tertiary_age_rates) <- tertiary_band
+age_education_gap <- tertiary_age_rates[primary_band] - primary_age_rates
+age_education_gap
+# These descriptive bands still combine different ages and record characteristics.
+# A consistent direction across bands cannot establish a causal education effect.
+
+age_education_plot <- ggplot(age_rates, aes(x = age_band, y = subscription_percent,
+                                            colour = education)) +
+  geom_point(size = 3) +
+  coord_cartesian(ylim = c(0, 35)) +
+  labs(title = "Subscription by education within age bands",
+       subtitle = "Records with no prior campaign contact",
+       x = "Age band (years)", y = "Subscribed (%)", colour = "Education") +
+  theme_minimal()
+print(age_education_plot)
+
+
