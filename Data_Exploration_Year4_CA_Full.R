@@ -256,4 +256,47 @@ print(history_count_plot)
 
 #====================================================
 
+# STEP 5: COMPARE SCALING METHODS
+
+# Compare scaling methods before choosing numerical inputs.
+# Keep these diagnostic copies separate from the baseline and original columns.
+normalizeMM <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+scaling_compare <- bank_clean
+scaling_compare$balance_minmax <- normalizeMM(scaling_compare$balance)
+scaling_compare$balance_robust <- (scaling_compare$balance -
+                                     median(scaling_compare$balance)) /
+  (quantile(scaling_compare$balance, probs = .75) -
+     quantile(scaling_compare$balance, probs = .25))
+summary(scaling_compare$balance_minmax)
+summary(scaling_compare$balance_robust)
+quantile(scaling_compare$balance_minmax, probs = c(.25, .50, .75))
+quantile(scaling_compare$balance_robust, probs = c(.25, .50, .75))
+# Min-max accepts negative balances; it subtracts the observed minimum.
+# Robust scaling changes the centre and scale but does not delete the long tail.
+
+# Check the denominator before attempting robust scaling of previous contacts
+previous_iqr <- quantile(bank_clean$previous, probs = .75) -
+  quantile(bank_clean$previous, probs = .25)
+previous_iqr
+# The denominator is zero here. Do not divide previous by its IQR.
+# Keep standardisation as the baseline; no PCA decomposition is performed here.
+
+# Sensitivity to the single largest previous-contact count
+# Refit scaling on a diagnostic subset only; retain all rows in the main analysis.
+previous_minmax <- normalizeMM(bank_clean$previous)
+previous_minmax_without_max <- normalizeMM(without_max_previous$previous)
+previous_scaled_without_max <- scale(without_max_previous$previous)
+summary(previous_minmax)
+summary(previous_minmax_without_max)
+summary(previous_scaled_without_max)
+max(without_max_previous$previous)
+# Compare the mapped value for one previous contact under each fitted range.
+previous_minmax[bank_clean$previous == 1][1]
+previous_minmax_without_max[without_max_previous$previous == 1][1]
+# Linear rescaling alone does not remove skewness. If inputs are standardised
+# again before PCA, positive linear rescalings give the same standardised inputs.
+# Removing a row changes the fitted data; that is a different sensitivity question.
+
 
