@@ -43,4 +43,40 @@ our_table
 our_table <- table(bank$pdays == -1)
 our_table
 
+# STEP 3: PREPARE THE DATA
+
+# Prepare a separate copy so the original data can be checked later.
+# The dictionary states that pdays = -1 means no previous contact.
+bank_clean <- bank
+bank_clean$previously_contacted <- ifelse(bank_clean$pdays == -1, "no", "yes")
+bank_clean$pdays_since_contact <- ifelse(bank_clean$pdays == -1, NA, bank_clean$pdays)
+
+# Separate absence of prior contact from the result of a previous campaign
+# An unknown result after a real prior contact is different from no prior contact.
+bank_clean$history_group <- ifelse(bank_clean$pdays == -1, "No prior contact",
+                                   bank_clean$poutcome)
+count(bank_clean, history_group, y)
+
+# Retain indicators of missing information for audit and later exploration
+# A missing prior result after real contact differs from no prior contact.
+bank_clean$job_unknown_flag <- ifelse(bank_clean$job == "unknown", 1, 0)
+bank_clean$contact_unknown_flag <- ifelse(bank_clean$contact == "unknown", 1, 0)
+bank_clean$prior_result_unknown_flag <- ifelse(bank_clean$pdays != -1 &
+                                                 bank_clean$poutcome == "unknown", 1, 0)
+count(bank_clean, job_unknown_flag)
+count(bank_clean, contact_unknown_flag)
+count(bank_clean, previously_contacted, prior_result_unknown_flag)
+sum(is.na(bank_clean$pdays_since_contact))
+# These audit flags do not impute unknown values or change the original columns.
+# They are not added to the numerical PCA input set.
+
+# Check the relationship between missing campaign outcomes and previous contact
+# Count combinations instead of assuming that every unknown outcome is an error.
+count(bank_clean, previously_contacted, poutcome)
+count(bank_clean, previously_contacted, previous)
+
+# Analyse the missing-information codes actually present in this source.
+# Keep unknown categorical levels explicitly; no evidence supports imputing a job.
+# Do not remove legitimate negative balances or large values just for being unusual.
+# There is no customer identifier, so matching records alone cannot prove duplication.
 
