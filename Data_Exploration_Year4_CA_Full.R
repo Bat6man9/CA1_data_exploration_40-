@@ -488,3 +488,27 @@ age_education_plot <- ggplot(age_rates, aes(x = age_band, y = subscription_perce
 print(age_education_plot)
 
 
+
+# STEP 7: ENCODE CATEGORICAL VARIABLES
+
+# Encode a complete prepared copy after creating all preparation fields.
+# Secondary is the reference. Unknown has its own flag rather than being imputed.
+bank_encoded <- bank_clean
+bank_encoded$education_primary <- ifelse(bank_encoded$education == "primary", 1, 0)
+bank_encoded$education_tertiary <- ifelse(bank_encoded$education == "tertiary", 1, 0)
+bank_encoded$education_unknown <- ifelse(bank_encoded$education == "unknown", 1, 0)
+bank_encoded$housing_flag <- ifelse(bank_encoded$housing == "yes", 1, 0)
+bank_encoded$loan_flag <- ifelse(bank_encoded$loan == "yes", 1, 0)
+bank_encoded$default_flag <- ifelse(bank_encoded$default == "yes", 1, 0)
+
+count(bank_encoded, education, education_primary, education_tertiary,
+      education_unknown)
+count(bank_encoded, housing, housing_flag)
+count(bank_encoded, loan, loan_flag)
+count(bank_encoded, default, default_flag)
+# Original categories remain for audit; do not use both raw and dummy versions
+# as numeric PCA inputs. y is never an input feature here.
+
+
+
+
